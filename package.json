@@ -1,0 +1,23 @@
+{
+  "name": "pi-free-usage",
+  "version": "1.0.0",
+  "description": "Shows OpenRouter free-model daily request usage, weekly budget remaining, and spend in pi's footer, plus a /fusage command",
+  "keywords": [
+    "pi-package"
+  ],
+  "license": "MIT",
+  "author": "Heric Camargo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/herijooj/pi-free-usage.git"
+  },
+  "homepage": "https://github.com/herijooj/pi-free-usage",
+  "pi": {
+    "extensions": [
+      "./extensions/free-usage.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  }
+}
