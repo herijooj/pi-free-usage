@@ -114,7 +114,7 @@ export default function (pi: ExtensionAPI) {
 		const timer = setInterval(() => void refresh(ctx), 60_000);
 		timer.unref?.();
 	});
-	pi.on("turn_end", refresh);
+	pi.on("turn_end", (_event, ctx) => refresh(ctx));
 
 	pi.registerCommand("fusage", {
 		description: "Show OpenRouter free-model daily usage and time until UTC reset",
