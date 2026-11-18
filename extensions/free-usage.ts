@@ -89,6 +89,7 @@ function resetCountdown(): { text: string; iso: string } {
 
 export default function (pi: ExtensionAPI) {
 	let timer: ReturnType<typeof setInterval> | undefined;
+	let sessionAlive = true;
 	const refresh = async (ctx: any) => {
 		try {
 			const info = await fetchKeyInfo();
@@ -105,19 +106,24 @@ export default function (pi: ExtensionAPI) {
 			}
 			ctx.ui.setStatus(STATUS_ID, status);
 		} catch (err) {
-			ctx.ui.setStatus(STATUS_ID, ctx.ui.theme.fg("error", "free ?"));
+			// ctx may be stale (session replaced/reloaded while fetch was in
+			// flight) — never let this reject into an unhandled exception.
 			console.error(`fusage: ${(err as Error).message}`);
+			try {
+				ctx.ui.setStatus(STATUS_ID, ctx.ui.theme.fg("error", "free ?"));
+			} catch {
+				// stale ctx — nothing to update
+			}
 		}
 	};
 
 	pi.on("session_start", async (_event, ctx) => {
 		await refresh(ctx);
 		if (timer) clearInterval(timer);
+		sessionAlive = true;
 		timer = setInterval(() => {
-			refresh(ctx).catch(() => {
-				if (timer) clearInterval(timer);
-				timer = undefined;
-			});
+			if (!sessionAlive) return;
+			refresh(ctx).catch(() => {});
 		}, 60_000);
 		timer.unref?.();
 	});
@@ -125,9 +131,13 @@ export default function (pi: ExtensionAPI) {
 	// Old ctx objects are invalid after session replacement/reload; the
 	// interval above must not outlive the session or it crashes pi.
 	pi.on("session_shutdown", async () => {
+		sessionAlive = false;
 		if (timer) clearInterval(timer);
+		timer = undefined;
 	});
-	pi.on("turn_end", (_event, ctx) => refresh(ctx));
+	pi.on("turn_end", (_event, ctx) => {
+		refresh(ctx).catch(() => {});
+	});
 
 	pi.registerCommand("fusage", {
 		description: "Show OpenRouter free-model daily usage and time until UTC reset",
