@@ -88,6 +88,7 @@ function resetCountdown(): { text: string; iso: string } {
 }
 
 export default function (pi: ExtensionAPI) {
+	let timer: ReturnType<typeof setInterval> | undefined;
 	const refresh = async (ctx: any) => {
 		try {
 			const info = await fetchKeyInfo();
@@ -111,8 +112,20 @@ export default function (pi: ExtensionAPI) {
 
 	pi.on("session_start", async (_event, ctx) => {
 		await refresh(ctx);
-		const timer = setInterval(() => void refresh(ctx), 60_000);
+		if (timer) clearInterval(timer);
+		timer = setInterval(() => {
+			refresh(ctx).catch(() => {
+				if (timer) clearInterval(timer);
+				timer = undefined;
+			});
+		}, 60_000);
 		timer.unref?.();
+	});
+
+	// Old ctx objects are invalid after session replacement/reload; the
+	// interval above must not outlive the session or it crashes pi.
+	pi.on("session_shutdown", async () => {
+		if (timer) clearInterval(timer);
 	});
 	pi.on("turn_end", (_event, ctx) => refresh(ctx));
 
